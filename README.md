@@ -1,0 +1,1 @@
+# privacy-first-pdf-protector-set-password-in-pdf-free-locally
