@@ -1,5 +1,6 @@
 # PDF Protect — Password Protect a PDF Offline with AES-256 Encryption (No Upload)
 
+[![Latest release](https://img.shields.io/github/v/release/hlotiim/privacy-first-pdf-protector-set-password-in-pdf-free-locally?label=Download&color=2ea44f)](https://github.com/hlotiim/privacy-first-pdf-protector-set-password-in-pdf-free-locally/releases/latest/download/pdf-protect.html)
 [![License: MIT](https://img.shields.io/badge/License-MIT-2ea44f.svg)](LICENSE)
 [![Encryption: AES-256](https://img.shields.io/badge/Encryption-AES--256%20(R6)-6ea8fe.svg)](#what-encryption-does-pdf-protect-use)
 [![100% Offline](https://img.shields.io/badge/Uploads-Zero-3ddc97.svg)](#how-is-the-no-upload-guarantee-actually-enforced)
@@ -11,7 +12,7 @@
 
 Most free "protect PDF online" tools — iLovePDF, Smallpdf, Sejda, and the PDF24 web version — upload your unprotected document to their servers before encrypting it. That is backwards: the confidential file travels off your device *before* it gets any protection. PDF Protect closes that gap by doing the encryption inside your browser tab.
 
-**➜ [Use it now in your browser](https://hlotiim.github.io/privacy-first-pdf-protector-set-password-in-pdf-free-locally/)** — or **[download the single file](pdf-protect.html)** to keep a permanent offline copy. Both run the same encryption engine on your own device.
+**➜ [Use it now in your browser](https://hlotiim.github.io/privacy-first-pdf-protector-set-password-in-pdf-free-locally/)** — or **[download the single file](https://github.com/hlotiim/privacy-first-pdf-protector-set-password-in-pdf-free-locally/releases/latest/download/pdf-protect.html)** to keep a permanent offline copy. Both run the same encryption engine on your own device.
 
 ![PDF Protect interface showing three PDF files successfully encrypted with AES-256 password protection, a password strength meter, and advanced permission options for printing, editing, and copying](docs/screenshot.png)
 
@@ -41,7 +42,7 @@ Download `pdf-protect.html`, open it in your browser, drag in your PDF, type a p
 
 **Three steps:**
 
-1. **Download the tool.** Grab [`pdf-protect.html`](pdf-protect.html) from this repository (1.9 MB, one file).
+1. **Download the tool.** Grab [`pdf-protect.html`](https://github.com/hlotiim/privacy-first-pdf-protector-set-password-in-pdf-free-locally/releases/latest/download/pdf-protect.html) from the [latest release](https://github.com/hlotiim/privacy-first-pdf-protector-set-password-in-pdf-free-locally/releases/latest) (1.9 MB, one file).
 2. **Open it.** Double-click the file. It runs straight from `file://` in Chrome, Edge, Firefox, or any modern browser. You can disconnect from the internet first if you want to prove nothing is uploaded.
 3. **Protect your PDF.** Drag one or more PDFs in, set a password, optionally adjust permissions, then click **Protect PDFs** and download the results.
 
@@ -57,7 +58,7 @@ There is no installation. PDF Protect is a self-contained HTML document — jQue
 
 Both encrypt your PDFs on your own device with the identical engine, and neither uploads your document. They differ only in how the code reaches your browser.
 
-| | [Hosted version](https://hlotiim.github.io/privacy-first-pdf-protector-set-password-in-pdf-free-locally/) | [Single file](pdf-protect.html) |
+| | [Hosted version](https://hlotiim.github.io/privacy-first-pdf-protector-set-password-in-pdf-free-locally/) | [Single file](https://github.com/hlotiim/privacy-first-pdf-protector-set-password-in-pdf-free-locally/releases/latest/download/pdf-protect.html) |
 |---|---|---|
 | Getting started | Click the link | Download 1.9 MB, then open |
 | Initial page weight | ~36 KB | 1.9 MB |
