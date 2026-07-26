@@ -1,0 +1,13 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/hlotiim/privacy-first-pdf-protector-set-password-in-pdf-free-locally/security/advisories/new
+    about: Report privately if a file is readable without its password, or if data left the device.
+
+  - name: Question about using the tool
+    url: https://github.com/hlotiim/privacy-first-pdf-protector-set-password-in-pdf-free-locally#frequently-asked-questions
+    about: The README FAQ covers forgotten passwords, file size limits, batch encryption and mobile support.
+
+  - name: I forgot my PDF password
+    url: https://github.com/hlotiim/privacy-first-pdf-protector-set-password-in-pdf-free-locally#what-if-i-forget-the-password
+    about: There is no recovery path. This is a property of correct encryption, not a bug that can be fixed.

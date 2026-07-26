@@ -307,6 +307,10 @@ Only if the tool encrypts client-side. A server-based tool receives your unprote
 
 Not by breaking AES-256 itself — no practical attack against it exists. A PDF can be cracked by guessing the password, since encryption keys are derived from it and an attacker can attempt candidates offline. A long random password makes this computationally infeasible.
 
+### What if I forget the password?
+
+The document cannot be recovered. There is no backdoor, no reset, and no master key — that is a property of correct encryption rather than a limitation of this tool. Nobody, including the author, can open an AES-256 PDF without its password. Store it in a password manager before you close the tab, and always keep an unencrypted original somewhere safe.
+
 ### How long should my PDF password be?
 
 Use at least 16 random characters mixing upper case, lower case, digits, and symbols. The built-in generator produces a 20-character password using `crypto.getRandomValues`. Length matters far more than complexity rules; a long random passphrase from a password manager is ideal.
@@ -347,9 +351,13 @@ No. The password is read from the input field into a JavaScript variable, passed
 
 ## Contributing
 
-Issues and pull requests are welcome. If you are changing behaviour, please run `run-tests.ps1` first and add a check covering your change — both test suites are fast and run entirely offline.
+Issues and pull requests are welcome. [`CONTRIBUTING.md`](CONTRIBUTING.md) covers the setup, where to make each kind of change, and how the suites are organised. The short version: edit `src/`, run `run-tests.ps1`, commit the regenerated artifacts, and add a check covering your change. There is no toolchain to install — Windows PowerShell and a browser are enough.
+
+One constraint governs everything: **nothing may leave the user's device.** No network request, no telemetry, no CDN, no remote font. A change that breaks this will fail CI as well as review.
 
 Useful additions people have asked about: password removal for files you can already open, a Web Worker so very large PDFs do not block the interface, and drag-and-drop reordering for batch runs.
+
+Found a security problem — a file readable without its password, or data leaving the device? Please report it privately. See [`SECURITY.md`](SECURITY.md) for the process and the scope. Participation is governed by the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ---
 

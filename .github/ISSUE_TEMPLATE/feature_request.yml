@@ -1,0 +1,43 @@
+name: Feature request
+description: Suggest a capability or an improvement
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        One constraint governs every feature here: **nothing may leave the
+        user's device.** No network requests, no telemetry, no CDN, no remote
+        fonts. Suggestions needing a server or a third-party service cannot be
+        accepted, however useful they might be.
+
+        The deliverable also stays a single dependency-free HTML file, so
+        anything required must be embeddable.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Describe the situation you are in, rather than the solution you have in mind.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like it to do?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Workarounds you have tried
+      description: Including other tools, and why they did not suit.
+
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Constraints
+      options:
+        - label: This can work entirely offline, with no server and no network request
+          required: true

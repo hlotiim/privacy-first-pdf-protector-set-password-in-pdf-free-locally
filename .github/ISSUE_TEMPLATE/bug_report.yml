@@ -1,0 +1,94 @@
+name: Bug report
+description: A PDF failed to encrypt, opened without the password, or the page misbehaved
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Two things before you start:
+
+        - **Never attach a confidential PDF.** Reproduce with a harmless file.
+        - If the bug means a file is readable without its password, or that data
+          left your device, please report it privately instead:
+          [security advisory](https://github.com/hlotiim/privacy-first-pdf-protector-set-password-in-pdf-free-locally/security/advisories/new).
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you expected, and what happened instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open pdf-protect.html
+        2. Drop in a PDF
+        3. Type a password and click Protect PDFs
+        4. ...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: build
+    attributes:
+      label: Which build?
+      options:
+        - Single file (pdf-protect.html, opened from my device)
+        - Hosted page (hlotiim.github.io/...)
+        - Built from source myself
+    validations:
+      required: true
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and version
+      description: Found under Help > About, or in your browser's settings.
+      placeholder: Chrome 138 on Windows 11
+    validations:
+      required: true
+
+  - type: dropdown
+    id: encryption
+    attributes:
+      label: Encryption level selected
+      options:
+        - AES-256 (default)
+        - AES-128
+        - RC4-128 (legacy)
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: console
+    attributes:
+      label: Console output
+      description: >
+        Press F12, open the Console tab, reproduce the problem, and paste
+        anything that appears in red. Check that nothing you paste contains
+        your password.
+      render: text
+
+  - type: textarea
+    id: pdf-details
+    attributes:
+      label: About the input PDF
+      description: >
+        If it is input-specific, what do you know about the file? Its size,
+        roughly how it was produced, whether it was already password protected,
+        and whether it is a scan or a digital document.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Confirmations
+      options:
+        - label: I am not attaching a confidential document
+          required: true
+        - label: I have not included my password anywhere in this report
+          required: true
