@@ -14,7 +14,7 @@ encrypted and still opens with the password.
 
 - [ ] `powershell -ExecutionPolicy Bypass -File run-tests.ps1` ends with `ALL TESTS PASSED`
 - [ ] I edited the sources (`src/`, `build.ps1`), not the generated `pdf-protect.html` or `docs/`
-- [ ] Regenerated artifacts are committed, so CI's staleness check passes
+- [ ] Regenerated `pdf-protect.html` and `docs/` are committed, so the published page matches `src/`
 - [ ] Tests cover the behaviour I changed
 - [ ] No network request, telemetry, CDN, remote font, or external dependency was introduced
 - [ ] The tool still works with no internet connection at all

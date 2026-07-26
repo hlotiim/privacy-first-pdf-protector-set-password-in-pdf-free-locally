@@ -11,8 +11,9 @@ This project has one hard constraint that shapes every decision:
 > analytics, no remote font, no CDN, no error reporting.
 
 A change that breaks this will be declined regardless of how useful it is
-otherwise. The Content-Security-Policy (`default-src 'none'`) and a CI check
-both enforce it, so such a change will also fail the build.
+otherwise. The Content-Security-Policy (`default-src 'none'`) enforces it in the
+browser, and the end-to-end suites assert that no policy violation ever occurs,
+so such a change will fail the tests as well as review.
 
 Two consequences worth knowing before you start:
 
@@ -57,9 +58,9 @@ Edit the sources, never the generated artifacts:
 
 `pdf-protect.html` and `docs/` are **build outputs**. They are committed so the
 tool can be downloaded and hosted without a build step, but a pull request that
-edits them by hand will conflict with the next rebuild. CI compares them against
-their sources and fails if they are stale, so run `run-tests.ps1` and commit the
-regenerated files as part of your change.
+edits them by hand will conflict with the next rebuild. Run `run-tests.ps1`,
+which regenerates both, and commit the result as part of your change so the
+published page never drifts from `src/`.
 
 ## Tests
 

@@ -354,7 +354,7 @@ No. The password is read from the input field into a JavaScript variable, passed
 
 Issues and pull requests are welcome. [`CONTRIBUTING.md`](CONTRIBUTING.md) covers the setup, where to make each kind of change, and how the suites are organised. The short version: edit `src/`, run `run-tests.ps1`, commit the regenerated artifacts, and add a check covering your change. There is no toolchain to install — Windows PowerShell and a browser are enough.
 
-One constraint governs everything: **nothing may leave the user's device.** No network request, no telemetry, no CDN, no remote font. A change that breaks this will fail CI as well as review.
+One constraint governs everything: **nothing may leave the user's device.** No network request, no telemetry, no CDN, no remote font. A change that breaks this will fail the end-to-end suites, which assert that the browser reports zero Content Security Policy violations.
 
 Useful additions people have asked about: password removal for files you can already open, a Web Worker so very large PDFs do not block the interface, and drag-and-drop reordering for batch runs.
 

@@ -66,16 +66,21 @@ out prominently in the release notes.
 
 ## How the guarantees are verified
 
-The claims are checked mechanically on every push rather than asserted:
+These claims are tested rather than asserted, by 113 automated checks that run in
+a real headless browser. You can reproduce every one of them:
 
-- Encryption round trips are tested against real qpdf output, including that the
-  correct password opens the file and a wrong one fails.
-- The shipped file is scanned for any remote resource reference, and for the
-  restrictive `default-src 'none'` policy.
-- The published build is compared against its source so a stale artifact cannot
-  ship.
+- Encryption round trips are checked against real qpdf output, including that the
+  correct password opens the document and a wrong one fails.
+- Each encryption level is confirmed through qpdf's own `--show-encryption`
+  report, so the mode named in the interface is the mode actually applied.
+- The built page is driven end to end and asserted to produce zero
+  Content-Security-Policy violations, meaning no network request was even
+  attempted.
 
-See [`README.md`](README.md#security-notes-and-threat-model) for the full threat model,
-and run `powershell -ExecutionPolicy Bypass -File run-tests.ps1` to reproduce
-the suites yourself. You can also verify the no-upload behaviour directly: open
-your browser's Network tab and encrypt a file.
+```powershell
+powershell -ExecutionPolicy Bypass -File run-tests.ps1
+```
+
+See [`README.md`](README.md#security-notes-and-threat-model) for the full threat
+model. The simplest check needs no tooling at all: open your browser's Network
+tab and encrypt a file.
