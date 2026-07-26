@@ -1,3 +1,7 @@
+# Crawlers only read robots.txt from the root of a host, so at the current
+# github.io project URL this file is advisory and Google ignores it. It becomes
+# the live policy the moment the site is served from a custom domain, where
+# this path is the root. Nothing is disallowed either way.
 User-agent: *
 Allow: /
 

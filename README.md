@@ -245,6 +245,8 @@ The two modes also get different Content Security Policies. The single file perm
 
 GitHub Pages serves the `docs/` folder of the `main` branch directly — there is no build step on GitHub's side, so what is committed is exactly what is served. `docs/` is regenerated at the end of `run-tests.ps1` to keep it from drifting out of sync with `src/`.
 
+`docs/sitemap.xml` lists the published page, and `docs/robots.txt` documents the crawl policy. Note that a browser only honours `robots.txt` at the root of a host, so at a `github.io/<project>/` URL that file is advisory; it becomes authoritative under a custom domain. Search Console ownership is proved by dropping the `google*.html` file Google supplies into `docs/` — the build never touches unrecognised files there, so verification survives every rebuild.
+
 ---
 
 ## How is this tested?

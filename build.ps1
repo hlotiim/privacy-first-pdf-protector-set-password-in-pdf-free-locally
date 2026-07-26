@@ -95,10 +95,6 @@ else {
 <meta property="og:url" content="$SiteUrl">
 <meta property="og:image" content="${SiteUrl}screenshot.png">
 <meta name="twitter:image" content="${SiteUrl}screenshot.png">
-<!--
-  Search Console verification: paste the meta tag Google gives you on the line
-  below, or drop its googleXXXX.html file into docs\ instead.
--->
 "@
 }
 
