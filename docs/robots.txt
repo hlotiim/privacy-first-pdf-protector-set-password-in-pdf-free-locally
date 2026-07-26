@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://hlotiim.github.io/privacy-first-pdf-protector-set-password-in-pdf-free-locally/sitemap.xml

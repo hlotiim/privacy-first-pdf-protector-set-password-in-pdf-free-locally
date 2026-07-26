@@ -4,12 +4,14 @@
 [![Encryption: AES-256](https://img.shields.io/badge/Encryption-AES--256%20(R6)-6ea8fe.svg)](#what-encryption-does-pdf-protect-use)
 [![100% Offline](https://img.shields.io/badge/Uploads-Zero-3ddc97.svg)](#how-is-the-no-upload-guarantee-actually-enforced)
 [![Single File](https://img.shields.io/badge/Single%20File-1.9%20MB%20HTML-8b7bff.svg)](#how-do-i-install-it)
-[![Tests](https://img.shields.io/badge/Tests-80%20passing-2ea44f.svg)](#how-is-this-tested)
+[![Tests](https://img.shields.io/badge/Tests-113%20passing-2ea44f.svg)](#how-is-this-tested)
 [![Built with](https://img.shields.io/badge/Built%20with-qpdf%20%2B%20WebAssembly%20%2B%20jQuery-ffc857.svg)](#how-does-it-work-under-the-hood)
 
 **PDF Protect is a free, open-source tool that lets you password protect a PDF locally on your own computer, using real AES-256 encryption, without uploading the file anywhere.** It is a single HTML file you open in your browser. No installation, no signup, no server, no cloud, no internet connection required, no file size limit, and no watermark.
 
 Most free "protect PDF online" tools — iLovePDF, Smallpdf, Sejda, and the PDF24 web version — upload your unprotected document to their servers before encrypting it. That is backwards: the confidential file travels off your device *before* it gets any protection. PDF Protect closes that gap by doing the encryption inside your browser tab.
+
+**➜ [Use it now in your browser](https://hlotiim.github.io/privacy-first-pdf-protector-set-password-in-pdf-free-locally/)** — or **[download the single file](pdf-protect.html)** to keep a permanent offline copy. Both run the same encryption engine on your own device.
 
 ![PDF Protect interface showing three PDF files successfully encrypted with AES-256 password protection, a password strength meter, and advanced permission options for printing, editing, and copying](docs/screenshot.png)
 
@@ -18,6 +20,7 @@ Most free "protect PDF online" tools — iLovePDF, Smallpdf, Sejda, and the PDF2
 ## Table of contents
 
 - [Quick start](#how-do-i-password-protect-a-pdf-without-uploading-it)
+- [Hosted version vs single file](#should-i-use-the-hosted-version-or-the-single-file)
 - [Features](#what-can-pdf-protect-do)
 - [Comparison with iLovePDF, Smallpdf, Sejda and Adobe](#how-does-pdf-protect-compare-to-ilovepdf-smallpdf-and-adobe-acrobat)
 - [Encryption details](#what-encryption-does-pdf-protect-use)
@@ -47,6 +50,23 @@ That's it. There is nothing to install, no account to create, and no daily quota
 ### How do I install it?
 
 There is no installation. PDF Protect is a self-contained HTML document — jQuery, the qpdf encryption engine, and the WebAssembly binary are all embedded inside the single file. Save it anywhere, including a USB stick, and it will work on any machine with a browser, permanently and offline.
+
+---
+
+## Should I use the hosted version or the single file?
+
+Both encrypt your PDFs on your own device with the identical engine, and neither uploads your document. They differ only in how the code reaches your browser.
+
+| | [Hosted version](https://hlotiim.github.io/privacy-first-pdf-protector-set-password-in-pdf-free-locally/) | [Single file](pdf-protect.html) |
+|---|---|---|
+| Getting started | Click the link | Download 1.9 MB, then open |
+| Initial page weight | ~36 KB | 1.9 MB |
+| Encryption engine | Fetched on first use (1.3 MB, then cached) | Already embedded |
+| Works with no internet | After first load | Always, from the very first run |
+| Your PDF is uploaded | Never | Never |
+| Best for | Protecting a file right now | Air-gapped machines, USB sticks, archiving |
+
+The hosted page is served as static files from GitHub Pages; there is no backend that could receive a document. If you would rather not trust that claim, use the single file with your network disconnected — that is exactly why it exists.
 
 ---
 
@@ -194,32 +214,42 @@ The stack is deliberately small: **jQuery 3.7.1** for the interface, **qpdf via 
 
 ## How do I build it from source?
 
-The shipped `pdf-protect.html` is generated. Rebuild it after changing `src/template.html` or `src/engine.js`:
+Both distributions are generated from the same `src/template.html`, so rebuild them after changing the template or `src/engine.js`:
 
 ```powershell
+# Single offline file -> pdf-protect.html
 powershell -ExecutionPolicy Bypass -File build.ps1
+
+# Hosted page -> docs/index.html + docs/assets/
+powershell -ExecutionPolicy Bypass -File build.ps1 -Mode hosted -Output docs\index.html
 ```
 
-`build.ps1` inlines `vendor/jquery.min.js`, `vendor/qpdf.js`, `src/engine.js`, and a base64 copy of `vendor/qpdf.wasm` into the template, then verifies that no placeholder token survived substitution.
+In `single` mode, `build.ps1` inlines `vendor/jquery.min.js`, `vendor/qpdf.js`, `src/engine.js`, and a base64 copy of `vendor/qpdf.wasm` into the template. In `hosted` mode it emits those as sibling files instead, so the 1.3 MB WebAssembly binary is fetched only when a visitor encrypts their first PDF. Either way the build verifies that no placeholder token survived substitution.
+
+The two modes also get different Content Security Policies. The single file permits no network origin whatsoever (`default-src 'none'`); the hosted page has to allow `'self'` so it can load its own assets, and still allows no third-party origin.
 
 ### Project structure
 
 | Path | Purpose |
 | --- | --- |
-| `pdf-protect.html` | **The deliverable** — open this file |
-| `src/template.html` | Interface markup, styles, and jQuery application code |
+| `pdf-protect.html` | **The offline deliverable** — open this file |
+| `docs/` | The published GitHub Pages site, plus the README screenshot |
+| `src/template.html` | Interface markup, styles, reference content, and jQuery application code |
 | `src/engine.js` | DOM-free wrapper around qpdf-wasm (argument building, encryption, password helpers) |
-| `build.ps1` | Inlines every dependency into the single file |
-| `run-tests.ps1` | Builds and runs both test suites |
-| `docs/` | Screenshot used in this README |
+| `build.ps1` | Builds the single file or the hosted page from the template |
+| `run-tests.ps1` | Builds and runs all three test suites |
 | `vendor/` | jQuery 3.7.1 and the qpdf WebAssembly build |
-| `tests/` | Test harnesses, browser driver, and sample PDF generator |
+| `tests/` | Test harnesses, browser driver, static server, and sample PDF generator |
+
+### How is the hosted page published?
+
+GitHub Pages serves the `docs/` folder of the `main` branch directly — there is no build step on GitHub's side, so what is committed is exactly what is served. `docs/` is regenerated at the end of `run-tests.ps1` to keep it from drifting out of sync with `src/`.
 
 ---
 
 ## How is this tested?
 
-PDF Protect has **80 automated checks that run in headless Chrome**, split across two suites. Run them all with one command:
+PDF Protect has **113 automated checks that run in headless Chrome**, split across three suites. Run them all with one command:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File run-tests.ps1
@@ -227,9 +257,11 @@ powershell -ExecutionPolicy Bypass -File run-tests.ps1
 
 **Engine suite (47 checks)** — qpdf argument construction, AES-256 round trips, rejection of wrong and missing passwords, AES-128 and RC4 modes, permission enforcement verified through `--show-encryption`, Unicode and awkward passwords, re-encrypting already-protected files, module isolation between runs, and the password generator and strength estimator.
 
-**End-to-end suite (33 checks)** — drives the real built page: file selection, password validation and mismatch handling, the show/hide and generator controls, a full encryption run, inspection of the actual downloaded bytes, the already-encrypted and corrupt-input flows, and confirmation that zero Content Security Policy violations occur.
+**End-to-end suite (33 checks)** — drives the real built single file from `file://`: file selection, password validation and mismatch handling, the show/hide and generator controls, a full encryption run, inspection of the actual downloaded bytes, the already-encrypted and corrupt-input flows, and confirmation that zero Content Security Policy violations occur.
 
-Both suites report results through `document.title`, which the runner reads over Chrome's DevTools HTTP endpoint — a small trick that avoids needing a WebSocket client just to read one string.
+**Hosted end-to-end suite (33 checks)** — the same 33 checks against the hosted build, served over a real HTTP origin by `tests/serve.ps1`. This matters because the hosted page fetches `assets/qpdf.wasm` over the network instead of reading it from an inlined data URL, so it exercises a code path the `file://` suite cannot reach.
+
+All three suites report results through `document.title`, which the runner reads over Chrome's DevTools HTTP endpoint — a small trick that avoids needing a WebSocket client just to read one string.
 
 To export an encrypted file for inspection with outside tooling:
 

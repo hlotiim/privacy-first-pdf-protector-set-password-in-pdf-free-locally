@@ -22,8 +22,11 @@ $chrome = @(
 
 if (-not $chrome) { throw 'No Chrome or Edge installation found.' }
 
-$pagePath = Join-Path $PSScriptRoot (Split-Path $Page -Leaf)
-$uri = ([System.Uri]$pagePath).AbsoluteUri
+if ($Page -match '^https?://') {
+    $uri = $Page
+} else {
+    $uri = ([System.Uri](Join-Path $PSScriptRoot (Split-Path $Page -Leaf))).AbsoluteUri
+}
 $profileDir = Join-Path $env:TEMP "pdfprotect-test-profile-$PID"
 
 $args = @(
