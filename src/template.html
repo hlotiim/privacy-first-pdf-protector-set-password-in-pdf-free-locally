@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PDF Protect - offline AES-256 PDF password tool</title>
+<!--
+  Everything this page needs is inlined. The policy below allows no network
+  origin at all, so the browser itself enforces that nothing can be uploaded:
+    - 'wasm-unsafe-eval' is required to compile the qpdf WebAssembly module
+    - data: is how the wasm binary is handed to the loader
+    - blob: is how finished PDFs are handed back to you as downloads
+-->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'none';
+  script-src 'unsafe-inline' 'wasm-unsafe-eval';
+  style-src 'unsafe-inline';
+  img-src data:;
+  connect-src data: blob:;
+  form-action 'none';
+  base-uri 'none';">
+<style>
+  :root {
+    --bg: #0b1020;
+    --bg-soft: #121a31;
+    --panel: #161f38;
+    --panel-2: #1c2745;
+    --line: #263354;
+    --text: #e8ecf8;
+    --muted: #93a0c0;
+    --accent: #6ea8fe;
+    --accent-2: #8b7bff;
+    --ok: #3ddc97;
+    --warn: #ffc857;
+    --bad: #ff6b7a;
+    --radius: 14px;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 32px 20px 72px;
+    background:
+      radial-gradient(900px 500px at 15% -10%, #1b2a55 0%, transparent 60%),
+      radial-gradient(800px 500px at 110% 0%, #2a1f55 0%, transparent 55%),
+      var(--bg);
+    color: var(--text);
+    font: 15px/1.55 "Segoe UI", Roboto, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    min-height: 100vh;
+  }
+
+  .wrap { max-width: 880px; margin: 0 auto; }
+
+  header { margin-bottom: 26px; }
+
+  h1 {
+    margin: 0 0 6px;
+    font-size: 30px;
+    letter-spacing: -0.4px;
+    background: linear-gradient(92deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .sub { color: var(--muted); margin: 0; }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 14px;
+    padding: 7px 13px;
+    border: 1px solid #2c4a3c;
+    background: #12251d;
+    color: var(--ok);
+    border-radius: 999px;
+    font-size: 12.5px;
+    font-weight: 600;
+  }
+
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); }
+
+  .card {
+    background: linear-gradient(180deg, var(--panel), var(--bg-soft));
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 22px;
+    margin-bottom: 18px;
+  }
+
+  .card h2 {
+    margin: 0 0 4px;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 1.3px;
+    color: var(--muted);
+  }
+
+  .hint { color: var(--muted); font-size: 13px; margin: 0 0 16px; }
+
+  /* ---- drop zone ---- */
+
+  #drop {
+    border: 2px dashed #35456e;
+    border-radius: var(--radius);
+    padding: 34px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .15s, background .15s, transform .15s;
+    background: #101833;
+  }
+
+  #drop:hover { border-color: var(--accent); background: #131e3d; }
+  #drop.over { border-color: var(--accent); background: #16295a; transform: scale(1.008); }
+  #drop .big { font-size: 17px; font-weight: 600; margin-bottom: 5px; }
+  #drop .small { color: var(--muted); font-size: 13px; }
+  #picker { display: none; }
+
+  /* ---- file list ---- */
+
+  #files { list-style: none; margin: 16px 0 0; padding: 0; }
+
+  #files li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    background: var(--panel-2);
+    margin-bottom: 9px;
+  }
+
+  .fname { font-weight: 600; flex: 1 1 220px; min-width: 0; word-break: break-all; }
+  .fsize { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+
+  .status {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
+    background: #223056;
+    color: var(--muted);
+  }
+
+  .status.working { background: #23305e; color: var(--accent); }
+  .status.done { background: #12301f; color: var(--ok); }
+  .status.error { background: #3a1a22; color: var(--bad); }
+  .status.locked { background: #3a2f14; color: var(--warn); }
+
+  .errmsg { flex: 1 1 100%; color: var(--bad); font-size: 12.5px; word-break: break-word; }
+  .warnmsg { flex: 1 1 100%; color: var(--warn); font-size: 12.5px; word-break: break-word; }
+
+  .unlock { flex: 1 1 100%; display: flex; gap: 8px; }
+  .unlock input { flex: 1; }
+
+  /* ---- form controls ---- */
+
+  label.field { display: block; margin-bottom: 14px; }
+  label.field > span { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 6px; }
+
+  input[type=text], input[type=password], select {
+    width: 100%;
+    padding: 11px 13px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: #0e1730;
+    color: var(--text);
+    font-size: 15px;
+    font-family: inherit;
+  }
+
+  input:focus, select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(110,168,254,.16);
+  }
+
+  .row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .row > * { flex: 1 1 220px; }
+
+  /* Outweighs the `label.field > span` block rule above. */
+  label.field > span.pw-wrap { display: flex; gap: 8px; }
+  .pw-wrap input { flex: 1; min-width: 0; }
+
+  button {
+    font: inherit;
+    font-weight: 600;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: #22305a;
+    color: var(--text);
+    padding: 11px 16px;
+    cursor: pointer;
+    transition: filter .15s, opacity .15s;
+    white-space: nowrap;
+  }
+
+  button:hover:not(:disabled) { filter: brightness(1.18); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+
+  button.primary {
+    background: linear-gradient(92deg, var(--accent), var(--accent-2));
+    border: none;
+    color: #08122b;
+    font-size: 16px;
+    padding: 14px 22px;
+    width: 100%;
+  }
+
+  button.ghost { background: transparent; }
+  button.small { padding: 7px 12px; font-size: 13px; }
+
+  /* ---- strength meter ---- */
+
+  .meter { display: flex; gap: 5px; margin-top: 9px; }
+  .meter i { flex: 1; height: 5px; border-radius: 3px; background: #222f52; }
+  .meter i.on1 { background: var(--bad); }
+  .meter i.on2 { background: #ff9f45; }
+  .meter i.on3 { background: var(--warn); }
+  .meter i.on4 { background: #8fd694; }
+  .meter i.on5 { background: var(--ok); }
+
+  .meter-text { font-size: 12.5px; color: var(--muted); margin-top: 7px; }
+  .mismatch { color: var(--bad); font-size: 12.5px; margin-top: 7px; }
+
+  /* ---- advanced ---- */
+
+  #advToggle {
+    background: none;
+    border: none;
+    color: var(--accent);
+    padding: 0;
+    font-size: 13.5px;
+  }
+
+  #adv { display: none; margin-top: 18px; border-top: 1px solid var(--line); padding-top: 18px; }
+  #adv.open { display: block; }
+
+  .check { display: flex; align-items: flex-start; gap: 9px; margin-top: 12px; font-size: 14px; }
+  .check input { margin-top: 3px; width: 16px; height: 16px; accent-color: var(--accent); }
+
+  .note {
+    margin-top: 14px;
+    padding: 11px 13px;
+    border-left: 3px solid var(--warn);
+    background: #241f10;
+    color: #e4d5ab;
+    border-radius: 0 8px 8px 0;
+    font-size: 12.5px;
+  }
+
+  /* ---- results ---- */
+
+  #results { display: none; }
+  #results.show { display: block; }
+  #summary { margin: 0 0 14px; font-size: 14px; }
+  .dl-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  #busy { display: none; align-items: center; gap: 11px; margin-top: 14px; color: var(--muted); font-size: 14px; }
+  #busy.show { display: flex; }
+
+  .spinner {
+    width: 17px; height: 17px;
+    border: 2px solid #2c3a63;
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  footer { color: var(--muted); font-size: 12.5px; text-align: center; margin-top: 26px; line-height: 1.7; }
+  code { background: #0e1730; padding: 1px 6px; border-radius: 5px; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>PDF Protect</h1>
+    <p class="sub">Add a password to your PDFs with real AES-256 encryption.</p>
+    <div class="badge"><span class="dot"></span> Runs entirely offline &mdash; no upload, no server, no cloud</div>
+  </header>
+
+  <div class="card">
+    <h2>1 &middot; Choose PDFs</h2>
+    <p class="hint">Drop files below or click to browse. You can protect several at once.</p>
+
+    <div id="drop">
+      <div class="big">Drop PDF files here</div>
+      <div class="small">or click to browse</div>
+    </div>
+    <input type="file" id="picker" accept="application/pdf,.pdf" multiple>
+
+    <ul id="files"></ul>
+  </div>
+
+  <div class="card">
+    <h2>2 &middot; Set the password</h2>
+    <p class="hint">This is the password needed to open the document.</p>
+
+    <label class="field">
+      <span>Password</span>
+      <span class="pw-wrap">
+        <input type="password" id="pw" autocomplete="new-password" spellcheck="false" placeholder="Enter a strong password">
+        <button type="button" id="togglePw" class="small">Show</button>
+        <button type="button" id="genPw" class="small">Generate</button>
+      </span>
+    </label>
+
+    <div class="meter" id="meter">
+      <i></i><i></i><i></i><i></i><i></i>
+    </div>
+    <div class="meter-text" id="meterText">Enter a password to see its estimated strength.</div>
+
+    <label class="field" style="margin-top:16px">
+      <span>Confirm password</span>
+      <input type="password" id="pw2" autocomplete="new-password" spellcheck="false" placeholder="Type it again">
+    </label>
+    <div class="mismatch" id="mismatch" style="display:none">Passwords do not match.</div>
+
+    <button type="button" id="advToggle">Advanced options</button>
+
+    <div id="adv">
+      <div class="row">
+        <label class="field">
+          <span>Encryption</span>
+          <select id="level">
+            <option value="256" selected>AES-256 &mdash; strongest (recommended)</option>
+            <option value="128">AES-128 &mdash; for older viewers</option>
+            <option value="rc4">RC4-128 &mdash; legacy, insecure</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Owner password</span>
+          <select id="ownerMode">
+            <option value="same" selected>Same as the open password</option>
+            <option value="custom">Use a different one</option>
+          </select>
+        </label>
+      </div>
+
+      <label class="field" id="ownerPwField" style="display:none">
+        <span>Owner password (controls permissions)</span>
+        <input type="text" id="ownerPw" spellcheck="false" placeholder="Separate password for changing permissions">
+      </label>
+
+      <div class="row">
+        <label class="field">
+          <span>Printing</span>
+          <select id="print">
+            <option value="full" selected>Allowed</option>
+            <option value="low">Low resolution only</option>
+            <option value="none">Not allowed</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Editing</span>
+          <select id="modify">
+            <option value="all" selected>Allowed</option>
+            <option value="annotate">Comments and form filling only</option>
+            <option value="form">Form filling only</option>
+            <option value="assembly">Page assembly only</option>
+            <option value="none">Not allowed</option>
+          </select>
+        </label>
+      </div>
+
+      <label class="check">
+        <input type="checkbox" id="extract" checked>
+        <span>Allow copying text and images</span>
+      </label>
+
+      <label class="check">
+        <input type="checkbox" id="optimize">
+        <span>Recompress to reduce file size <em style="color:var(--muted)">(rewrites the document structure)</em></span>
+      </label>
+
+      <div class="note">
+        The password is what actually protects the file: the contents are encrypted and
+        unreadable without it. The printing, editing and copying settings above are
+        permission flags that compliant PDF readers choose to respect &mdash; they are not
+        an encryption boundary. To make them meaningful to someone who has the open
+        password, set a different owner password.
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>3 &middot; Protect</h2>
+    <button type="button" id="protect" class="primary" disabled>Protect PDFs</button>
+    <div id="busy"><span class="spinner"></span><span id="busyText">Working&hellip;</span></div>
+
+    <div id="results">
+      <p id="summary"></p>
+      <div class="dl-row">
+        <button type="button" id="downloadAll">Download all</button>
+        <button type="button" id="reset" class="ghost">Start over</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    Encryption by <code>qpdf</code> compiled to WebAssembly, running inside this page.<br>
+    Your files and passwords never leave this device. Keep a copy of your password &mdash;
+    an AES-256 PDF cannot be recovered without it.
+  </footer>
+
+</div>
+
+<script>/*__JQUERY__*/</script>
+<script>/*__QPDF_JS__*/</script>
+<script>/*__ENGINE__*/</script>
+<script>
+jQuery(function ($) {
+  "use strict";
+
+  // The wasm binary travels as a data: URL so the whole tool stays one file and
+  // works from file:// where fetching a sibling .wasm would be blocked.
+  PDFProtect.configure({
+    factory: Module,
+    wasmUrl: "data:application/octet-stream;base64,__QPDF_WASM_B64__"
+  });
+
+  var files = [];
+  var nextId = 1;
+  var objectUrls = [];
+
+  /* ---------- helpers ---------- */
+
+  function formatSize(bytes) {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+  }
+
+  function protectedName(name) {
+    return name.replace(/\.pdf$/i, "") + "-protected.pdf";
+  }
+
+  function readFile(file) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () { resolve(new Uint8Array(reader.result)); };
+      reader.onerror = function () { reject(reader.error); };
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  // Lets the browser repaint between files so the status list stays live.
+  function yieldToUi() {
+    return new Promise(function (resolve) { setTimeout(resolve, 16); });
+  }
+
+  function saveBytes(bytes, filename) {
+    var url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
+    objectUrls.push(url);
+    $("<a>").attr({ href: url, download: filename }).appendTo("body")[0].click();
+    $("a[download]").last().remove();
+  }
+
+  /* ---------- file list ---------- */
+
+  function addFiles(list) {
+    $.each(list, function (_, file) {
+      if (!/\.pdf$/i.test(file.name) && file.type !== "application/pdf") return;
+      files.push({
+        id: nextId++,
+        file: file,
+        name: file.name,
+        size: file.size,
+        status: "ready",
+        result: null,
+        error: "",
+        warning: "",
+        needsPassword: false,
+        currentPassword: ""
+      });
+    });
+    render();
+  }
+
+  function statusLabel(item) {
+    switch (item.status) {
+      case "working": return "Encrypting";
+      case "done": return "Protected";
+      case "error": return item.needsPassword ? "Password needed" : "Failed";
+      default: return "Ready";
+    }
+  }
+
+  function statusClass(item) {
+    if (item.status === "error") return item.needsPassword ? "locked" : "error";
+    return item.status;
+  }
+
+  function render() {
+    var $list = $("#files").empty();
+
+    $.each(files, function (_, item) {
+      var $li = $("<li>").attr("data-id", item.id);
+
+      $("<span>").addClass("fname").text(item.name).appendTo($li);
+      $("<span>").addClass("fsize").text(formatSize(item.size)).appendTo($li);
+      $("<span>").addClass("status " + statusClass(item)).text(statusLabel(item)).appendTo($li);
+
+      if (item.status === "done") {
+        $("<button>").addClass("small download").text("Download").appendTo($li);
+      } else if (item.status !== "working") {
+        $("<button>").addClass("small ghost remove").text("Remove").appendTo($li);
+      }
+
+      if (item.warning) {
+        $("<span>").addClass("warnmsg").text(item.warning).appendTo($li);
+      }
+
+      if (item.status === "error") {
+        $("<span>").addClass("errmsg").text(item.error).appendTo($li);
+        if (item.needsPassword) {
+          $("<span>").addClass("unlock").append(
+            $("<input>").attr({
+              type: "text",
+              placeholder: "Current password of this PDF",
+              spellcheck: "false"
+            }).addClass("curpw").val(item.currentPassword)
+          ).appendTo($li);
+        }
+      }
+
+      $list.append($li);
+    });
+
+    refreshProtectButton();
+  }
+
+  function findItem(el) {
+    var id = Number($(el).closest("li").attr("data-id"));
+    return $.grep(files, function (f) { return f.id === id; })[0];
+  }
+
+  $("#files")
+    .on("click", ".remove", function () {
+      var item = findItem(this);
+      files = $.grep(files, function (f) { return f !== item; });
+      render();
+    })
+    .on("click", ".download", function () {
+      var item = findItem(this);
+      if (item && item.result) saveBytes(item.result, protectedName(item.name));
+    })
+    .on("input", ".curpw", function () {
+      var item = findItem(this);
+      if (item) item.currentPassword = $(this).val();
+    });
+
+  /* ---------- drag and drop ---------- */
+
+  var $drop = $("#drop");
+
+  $drop.on("click", function () { $("#picker").val("").trigger("click"); });
+
+  $("#picker").on("change", function () { addFiles(this.files); });
+
+  $drop.on("dragover dragenter", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    $drop.addClass("over");
+  });
+
+  $drop.on("dragleave dragend drop", function () { $drop.removeClass("over"); });
+
+  $drop.on("drop", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    addFiles(e.originalEvent.dataTransfer.files);
+  });
+
+  // Stops a stray drop elsewhere on the page from navigating away from the app.
+  $(document).on("dragover drop", function (e) { e.preventDefault(); });
+
+  /* ---------- password ui ---------- */
+
+  function updateStrength() {
+    var pw = $("#pw").val();
+    var s = PDFProtect.estimateStrength(pw);
+
+    $("#meter i").each(function (i) {
+      $(this).attr("class", i < s.level && pw ? "on" + s.level : "");
+    });
+
+    $("#meterText").text(pw
+      ? "Estimated strength: " + s.label + " (about " + s.bits + " bits of entropy)"
+      : "Enter a password to see its estimated strength.");
+
+    var mismatch = $("#pw2").val().length > 0 && $("#pw2").val() !== pw;
+    $("#mismatch").toggle(mismatch);
+
+    refreshProtectButton();
+  }
+
+  function refreshProtectButton() {
+    var pw = $("#pw").val();
+    var pending = $.grep(files, function (f) { return f.status !== "done"; }).length;
+    var ready = pw.length > 0 && pw === $("#pw2").val() && pending > 0;
+    $("#protect").prop("disabled", !ready);
+  }
+
+  $("#pw, #pw2").on("input", updateStrength);
+
+  $("#togglePw").on("click", function () {
+    var show = $("#pw").attr("type") === "password";
+    $("#pw, #pw2").attr("type", show ? "text" : "password");
+    $(this).text(show ? "Hide" : "Show");
+  });
+
+  $("#genPw").on("click", function () {
+    var pw = PDFProtect.generatePassword(20);
+    $("#pw, #pw2").val(pw).attr("type", "text");
+    $("#togglePw").text("Hide");
+    updateStrength();
+  });
+
+  $("#advToggle").on("click", function () {
+    var open = $("#adv").toggleClass("open").hasClass("open");
+    $(this).text(open ? "Hide advanced options" : "Advanced options");
+  });
+
+  $("#ownerMode").on("change", function () {
+    $("#ownerPwField").toggle($(this).val() === "custom");
+  });
+
+  /* ---------- encryption run ---------- */
+
+  function currentOptions() {
+    var level = $("#level").val();
+    var opts = {
+      userPassword: $("#pw").val(),
+      bits: level === "256" ? 256 : 128,
+      useAes: level !== "rc4",
+      print: $("#print").val(),
+      modify: $("#modify").val(),
+      extract: $("#extract").is(":checked"),
+      accessibility: true,
+      optimize: $("#optimize").is(":checked")
+    };
+
+    if ($("#ownerMode").val() === "custom") {
+      opts.ownerPassword = $("#ownerPw").val();
+    }
+
+    return opts;
+  }
+
+  function setBusy(on, text) {
+    $("#busy").toggleClass("show", on);
+    if (text) $("#busyText").text(text);
+  }
+
+  $("#protect").on("click", async function () {
+    var opts = currentOptions();
+    var queue = $.grep(files, function (f) { return f.status !== "done"; });
+
+    $("#protect").prop("disabled", true);
+    $("#results").removeClass("show");
+
+    var succeeded = 0;
+    var failed = 0;
+
+    for (var i = 0; i < queue.length; i++) {
+      var item = queue[i];
+
+      setBusy(true, "Encrypting " + item.name + " (" + (i + 1) + " of " + queue.length + ")");
+      item.status = "working";
+      item.error = "";
+      item.warning = "";
+      render();
+      await yieldToUi();
+
+      try {
+        var bytes = await readFile(item.file);
+        var fileOpts = $.extend({}, opts, { currentPassword: item.currentPassword || "" });
+        var res = await PDFProtect.encrypt(bytes, fileOpts);
+
+        if (res.ok) {
+          item.status = "done";
+          item.result = res.bytes;
+          item.warning = res.warnings || "";
+          item.needsPassword = false;
+          succeeded++;
+        } else {
+          item.status = "error";
+          item.result = null;
+          item.error = res.needsPassword
+            ? "This PDF is already password protected. Enter its current password below and protect again."
+            : res.error;
+          item.needsPassword = res.needsPassword;
+          failed++;
+        }
+      } catch (err) {
+        item.status = "error";
+        item.error = String(err && err.message ? err.message : err);
+        item.needsPassword = false;
+        failed++;
+      }
+
+      render();
+    }
+
+    setBusy(false);
+
+    var parts = [];
+    if (succeeded) parts.push(succeeded + (succeeded === 1 ? " file" : " files") + " protected");
+    if (failed) parts.push(failed + (failed === 1 ? " file" : " files") + " failed");
+    $("#summary").text(parts.join(", ") + ".");
+    $("#results").addClass("show");
+    $("#downloadAll").prop("disabled", succeeded === 0);
+
+    refreshProtectButton();
+  });
+
+  // Browsers rate limit rapid successive downloads, so they are spaced out.
+  $("#downloadAll").on("click", function () {
+    var done = $.grep(files, function (f) { return f.status === "done" && f.result; });
+    $.each(done, function (i, item) {
+      setTimeout(function () { saveBytes(item.result, protectedName(item.name)); }, i * 350);
+    });
+  });
+
+  $("#reset").on("click", function () {
+    $.each(objectUrls, function (_, url) { URL.revokeObjectURL(url); });
+    objectUrls = [];
+    files = [];
+    $("#pw, #pw2, #ownerPw").val("");
+    $("#results").removeClass("show");
+    updateStrength();
+    render();
+  });
+
+  updateStrength();
+  render();
+});
+</script>
+</body>
+</html>

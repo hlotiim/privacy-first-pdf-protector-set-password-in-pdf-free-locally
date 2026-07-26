@@ -1,0 +1,7 @@
+* text=auto eol=lf
+
+# The sample PDF's xref table stores byte offsets, so any line-ending
+# translation would corrupt it. The wasm binary must stay untouched too.
+*.pdf binary
+*.wasm binary
+*.png binary

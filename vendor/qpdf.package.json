@@ -1,0 +1,23 @@
+{
+  "name": "@neslinesli93/qpdf-wasm",
+  "version": "0.3.0",
+  "description": "QPDF compiled to WASM",
+  "main": "dist/qpdf.js",
+  "types": "dist/qpdf.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "test": "mocha tests"
+  },
+  "license": "ISC",
+  "devDependencies": {
+    "mocha": "^10.0.0"
+  },
+  "dependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/neslinesli93/qpdf-wasm.git"
+  },
+  "homepage": "https://github.com/neslinesli93/qpdf-wasm"
+}

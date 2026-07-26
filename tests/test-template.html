@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PDFProtect engine harness</title>
+</head>
+<body>
+<pre id="log">running...</pre>
+
+<script>/*__JQUERY__*/</script>
+<script>/*__QPDF_JS__*/</script>
+<script>/*__ENGINE__*/</script>
+<script>
+var WASM_URL = "data:application/octet-stream;base64,__QPDF_WASM_B64__";
+var SAMPLE_B64 = "__SAMPLE_PDF_B64__";
+
+PDFProtect.configure({ factory: Module, wasmUrl: WASM_URL });
+
+var lines = [];
+function log(s) { lines.push(s); $("#log").text(lines.join("\n")); }
+
+function b64ToBytes(b64) {
+  var bin = atob(b64);
+  var out = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+function bytesToLatin1(bytes) {
+  var s = "", chunk = 0x8000;
+  for (var i = 0; i < bytes.length; i += chunk) {
+    s += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  }
+  return s;
+}
+
+var pass = 0, fail = 0;
+function check(name, cond, extra) {
+  if (cond) { pass++; log("PASS  " + name); }
+  else { fail++; log("FAIL  " + name + (extra ? "  :: " + extra : "")); }
+}
+
+// Reads back an encrypted file with a given password, uncompressing streams so
+// the original page content is greppable again.
+function inspect(encBytes, password, extraArgs) {
+  var args = [];
+  if (password != null) args.push("--password=" + password);
+  args = args.concat(["--decrypt", "--stream-data=uncompress", "/in.pdf", "/out.pdf"]);
+  if (extraArgs) args = extraArgs;
+  return PDFProtect.runQpdf(args, { "/in.pdf": encBytes });
+}
+
+(async function () {
+  try {
+    var sample = b64ToBytes(SAMPLE_B64);
+    log("sample.pdf bytes: " + sample.length);
+
+    /* ---------- buildEncryptArgs (pure, no wasm) ---------- */
+
+    var a = PDFProtect.buildEncryptArgs({ userPassword: "pw" });
+    check("defaults to AES-256", a.indexOf("--bits=256") !== -1, a.join(" "));
+    check("owner password defaults to user password",
+      a.indexOf("--owner-password=pw") !== -1, a.join(" "));
+    check("no --allow-insecure when owner password is set",
+      a.indexOf("--allow-insecure") === -1, a.join(" "));
+
+    var b = PDFProtect.buildEncryptArgs({ userPassword: "pw", ownerPassword: "" });
+    check("--allow-insecure added for empty owner password",
+      b.indexOf("--allow-insecure") !== -1, b.join(" "));
+
+    var c = PDFProtect.buildEncryptArgs({ userPassword: "pw", bits: 128, useAes: false });
+    check("RC4-128 selectable", c.indexOf("--use-aes=n") !== -1, c.join(" "));
+    check("RC4 opts in to weak crypto", c.indexOf("--allow-weak-crypto") !== -1, c.join(" "));
+    check("AES does not opt in to weak crypto",
+      PDFProtect.buildEncryptArgs({ userPassword: "pw", bits: 128 }).indexOf("--allow-weak-crypto") === -1);
+
+    var d = PDFProtect.buildEncryptArgs({ userPassword: "pw", print: "bogus", modify: "bogus" });
+    check("invalid permission values fall back to permissive",
+      d.indexOf("--print=full") !== -1 && d.indexOf("--modify=all") !== -1, d.join(" "));
+
+    var e = PDFProtect.buildEncryptArgs({ userPassword: "-x -y", currentPassword: "old" });
+    check("password kept in a single argv element",
+      e.indexOf("--user-password=-x -y") !== -1, e.join(" "));
+    check("current password precedes --encrypt",
+      e.indexOf("--password=old") < e.indexOf("--encrypt"), e.join(" "));
+
+    /* ---------- encrypt() round trips ---------- */
+
+    var r1 = await PDFProtect.encrypt(sample, { userPassword: "userpw", ownerPassword: "ownerpw" });
+    check("encrypt succeeds", r1.ok === true, r1.error);
+    if (!r1.ok) { document.title = "RESULT|" + lines.join(" || "); return; }
+
+    var encText = bytesToLatin1(r1.bytes);
+    check("output carries /Encrypt", encText.indexOf("/Encrypt") !== -1);
+    check("plaintext content not present", encText.indexOf("Hello PDF") === -1);
+    check("output is a PDF", encText.indexOf("%PDF-") === 0);
+
+    var show = await PDFProtect.runQpdf(["--show-encryption", "--password=userpw", "/in.pdf"],
+      { "/in.pdf": r1.bytes });
+    var showText = show.messages.join(" ");
+    log("show-encryption: " + showText);
+    check("AES-256 handler (R6 / AESv3)",
+      /R = 6/.test(showText) && /AESv3/.test(showText), showText);
+
+    var ok = await inspect(r1.bytes, "userpw");
+    check("opens with user password", ok.code === 0 && ok.output);
+    check("content survives round trip",
+      ok.output && bytesToLatin1(ok.output).indexOf("Hello PDF") !== -1);
+
+    var owner = await inspect(r1.bytes, "ownerpw");
+    check("opens with owner password", owner.code === 0 && owner.output);
+
+    var wrong = await inspect(r1.bytes, "definitely-wrong");
+    check("wrong password rejected", wrong.code !== 0);
+    check("wrong password reports an invalid-password error",
+      /invalid password/i.test(wrong.messages.join(" ")), wrong.messages.join(" "));
+
+    var none = await inspect(r1.bytes, null);
+    check("missing password rejected", none.code !== 0);
+
+    /* ---------- encrypted input handling ---------- */
+
+    var reenc = await PDFProtect.encrypt(r1.bytes, {
+      userPassword: "second", currentPassword: "userpw"
+    });
+    check("re-encrypts an already-encrypted file", reenc.ok === true, reenc.error);
+    if (reenc.ok) {
+      var second = await inspect(reenc.bytes, "second");
+      check("re-encrypted file opens with the new password", second.code === 0);
+    }
+
+    var noPass = await PDFProtect.encrypt(r1.bytes, { userPassword: "x" });
+    check("encrypted input without password fails", noPass.ok === false);
+    check("failure is flagged as needing a password", noPass.needsPassword === true, noPass.error);
+
+    var badPdf = await PDFProtect.encrypt(new Uint8Array([1, 2, 3, 4]), { userPassword: "x" });
+    check("non-PDF input fails cleanly", badPdf.ok === false && !badPdf.needsPassword, badPdf.error);
+    check("non-PDF error message is human readable",
+      badPdf.error && badPdf.error.indexOf("this.program") === -1, badPdf.error);
+
+    /* ---------- permissions ---------- */
+
+    var locked = await PDFProtect.encrypt(sample, {
+      userPassword: "u", ownerPassword: "o",
+      print: "none", modify: "none", extract: false, accessibility: true
+    });
+    check("restricted encryption succeeds", locked.ok === true, locked.error);
+    if (locked.ok) {
+      var lockedShow = await PDFProtect.runQpdf(["--show-encryption", "--password=o", "/in.pdf"],
+        { "/in.pdf": locked.bytes });
+      var lt = lockedShow.messages.join(" ");
+      check("printing is denied", /print low resolution: not allowed/.test(lt), lt);
+      check("extraction is denied", /extract for any purpose: not allowed/.test(lt), lt);
+      check("modification is denied", /modify anything: not allowed/.test(lt), lt);
+    }
+
+    /* ---------- other encryption levels ---------- */
+
+    var aes128 = await PDFProtect.encrypt(sample, { userPassword: "u", ownerPassword: "o", bits: 128 });
+    check("AES-128 encrypts", aes128.ok === true, aes128.error);
+    if (aes128.ok) {
+      var s128 = await PDFProtect.runQpdf(["--show-encryption", "--password=o", "/in.pdf"],
+        { "/in.pdf": aes128.bytes });
+      check("AES-128 uses AESv2", /AESv2/.test(s128.messages.join(" ")), s128.messages.join(" "));
+    }
+
+    var rc4 = await PDFProtect.encrypt(sample, {
+      userPassword: "u", ownerPassword: "o", bits: 128, useAes: false
+    });
+    check("RC4-128 encrypts", rc4.ok === true, rc4.error);
+
+    var optimized = await PDFProtect.encrypt(sample, {
+      userPassword: "u", ownerPassword: "o", optimize: true
+    });
+    check("optimized output encrypts", optimized.ok === true, optimized.error);
+
+    /* ---------- unicode and awkward passwords ---------- */
+
+    var tricky = "pä$$ word -x 日本 \"q\"";
+    var uni = await PDFProtect.encrypt(sample, { userPassword: tricky, ownerPassword: "o" });
+    check("unicode / spaced password encrypts", uni.ok === true, uni.error);
+    if (uni.ok) {
+      var uniOpen = await inspect(uni.bytes, tricky);
+      check("unicode password opens the file", uniOpen.code === 0, uniOpen.messages.join(" "));
+    }
+
+    /* ---------- password helpers ---------- */
+
+    var gen = PDFProtect.generatePassword(24);
+    check("generator honours length", gen.length === 24, gen);
+    var gen2 = PDFProtect.generatePassword(24);
+    check("generator is not deterministic", gen !== gen2);
+    var noSym = PDFProtect.generatePassword(40, false);
+    check("generator can omit symbols", /^[A-Za-z0-9]+$/.test(noSym), noSym);
+
+    check("empty password scores zero", PDFProtect.estimateStrength("").bits === 0);
+    check("repeated characters score very weak",
+      PDFProtect.estimateStrength("aaaaaaaaaaaaaaaa").level === 1,
+      JSON.stringify(PDFProtect.estimateStrength("aaaaaaaaaaaaaaaa")));
+    check("common sequence scores very weak",
+      PDFProtect.estimateStrength("password123").level === 1,
+      JSON.stringify(PDFProtect.estimateStrength("password123")));
+    check("generated 24-char password scores very strong",
+      PDFProtect.estimateStrength(gen).level === 5,
+      JSON.stringify(PDFProtect.estimateStrength(gen)));
+
+    /* ---------- isolation between runs ---------- */
+
+    var again = await PDFProtect.encrypt(sample, { userPassword: "third", ownerPassword: "o" });
+    check("module state does not leak between runs", again.ok === true, again.error);
+    if (again.ok) {
+      var thirdOpen = await inspect(again.bytes, "third");
+      check("last run still produces a valid file", thirdOpen.code === 0);
+      var staleOpen = await inspect(again.bytes, "userpw");
+      check("previous password does not open the new file", staleOpen.code !== 0);
+    }
+
+  } catch (err) {
+    fail++;
+    log("EXCEPTION " + (err && err.stack ? err.stack : err));
+  }
+
+  log("---- pass=" + pass + " fail=" + fail);
+  // The full log goes in the title so a plain HTTP poll of the DevTools
+  // /json/list endpoint can read it without a WebSocket client.
+  document.title = "RESULT|" + lines.join(" || ");
+})();
+</script>
+</body>
+</html>
