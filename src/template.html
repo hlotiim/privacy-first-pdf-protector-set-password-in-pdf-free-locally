@@ -3,7 +3,144 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PDF Protect - offline AES-256 PDF password tool</title>
+<title>PDF Protect - Password Protect a PDF Offline with AES-256 (No Upload)</title>
+<meta name="description" content="Free open-source tool to password protect a PDF locally with real AES-256 encryption. Runs entirely in your browser with no upload, no server and no installation.">
+<meta name="author" content="Roktim Saha">
+<meta name="robots" content="index, follow">
+
+<!--
+  Social and structured metadata. Inert when the file is opened locally; it
+  makes the page discoverable if it is ever hosted (GitHub Pages, for example).
+  og:url and a canonical tag are deliberately omitted so that whoever hosts it
+  can point them at their own address without a wrong claim baked in.
+-->
+<meta property="og:type" content="website">
+<meta property="og:title" content="PDF Protect - Password Protect a PDF Offline with AES-256">
+<meta property="og:description" content="Add a password to your PDFs with real AES-256 encryption, entirely on your own device. No upload, no server, no installation.">
+<meta property="og:site_name" content="PDF Protect">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="PDF Protect - Offline AES-256 PDF Password Tool">
+<meta name="twitter:description" content="Password protect a PDF locally in your browser. No upload, no server, no signup. Free and open source.">
+<meta name="twitter:creator" content="@hlotiim">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "SoftwareApplication",
+      "name": "PDF Protect",
+      "applicationCategory": "SecurityApplication",
+      "applicationSubCategory": "PDF encryption",
+      "operatingSystem": "Any (web browser)",
+      "description": "Free open-source tool that password protects PDF files locally using AES-256 encryption, with no upload to any server.",
+      "url": "https://github.com/hlotiim/privacy-first-pdf-protector-set-password-in-pdf-free-locally",
+      "downloadUrl": "https://github.com/hlotiim/privacy-first-pdf-protector-set-password-in-pdf-free-locally",
+      "license": "https://opensource.org/licenses/MIT",
+      "isAccessibleForFree": true,
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+      "featureList": [
+        "AES-256 PDF encryption (security handler revision 6)",
+        "AES-128 and RC4-128 legacy modes",
+        "Separate user and owner passwords",
+        "Printing, editing and copying permission controls",
+        "Batch encryption of multiple PDFs",
+        "Re-encryption of already password protected PDFs",
+        "Secure password generator and strength meter",
+        "Runs fully offline with no server upload"
+      ],
+      "author": {
+        "@type": "Person",
+        "name": "Roktim Saha",
+        "url": "https://roktimsaha.com",
+        "sameAs": [
+          "https://github.com/hlotiim",
+          "https://x.com/hlotiim",
+          "https://roktimsaha.com"
+        ]
+      }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "How do I password protect a PDF without uploading it?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Open PDF Protect in your browser, drag in your PDF, type a password and click Protect PDFs. The encryption runs on your own device using AES-256, so the file and the password are never transmitted to any server."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is the difference between a user password and an owner password?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The user password, also called the open password, is required to view the document and genuinely encrypts its contents. The owner password only controls whether printing, editing and copying restrictions can be changed. Only the user password provides real security."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can a password protected PDF be cracked?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Not by breaking AES-256 itself, as no practical attack against it exists. A PDF can be cracked by guessing the password, because the encryption key is derived from it and an attacker can test candidates offline. A long random password makes this computationally infeasible."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Is it safe to use online PDF password tools?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Only if the tool encrypts client side. A server based tool receives your unprotected document before applying any protection, so the confidential file exists on someone else's infrastructure. PDF Protect never transmits the file or the password."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does password protecting a PDF work offline?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. PDF Protect embeds jQuery, the qpdf engine and the WebAssembly binary in a single HTML file, so nothing is fetched at runtime. You can disconnect from the internet entirely and it still encrypts your PDFs."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "name": "How to password protect a PDF offline with AES-256",
+      "totalTime": "PT1M",
+      "tool": { "@type": "HowToTool", "name": "A modern web browser" },
+      "step": [
+        {
+          "@type": "HowToStep",
+          "name": "Open the tool",
+          "text": "Download pdf-protect.html and double-click it to open it in your browser. No installation is needed."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Add your PDFs",
+          "text": "Drag one or more PDF files onto the drop zone, or click it to browse for them."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Set a password",
+          "text": "Type the password needed to open the document, then confirm it. Use at least 16 random characters, or click Generate."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Adjust permissions",
+          "text": "Optionally open Advanced options to choose the encryption level and control printing, editing and copying."
+        },
+        {
+          "@type": "HowToStep",
+          "name": "Protect and download",
+          "text": "Click Protect PDFs and download the encrypted files. The originals on your device are left unchanged."
+        }
+      ]
+    }
+  ]
+}
+</script>
 <!--
   Everything this page needs is inlined. The policy below allows no network
   origin at all, so the browser itself enforces that nothing can be uploaded:

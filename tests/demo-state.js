@@ -15,8 +15,8 @@
     var bytes = b64ToBytes(SAMPLE_B64);
     var dt = new DataTransfer();
     dt.items.add(new File([bytes], "quarterly-report.pdf", { type: "application/pdf" }));
-    dt.items.add(new File([bytes], "contract-final.pdf", { type: "application/pdf" }));
-    dt.items.add(new File([new Uint8Array([1, 2, 3])], "not-really-a.pdf", { type: "application/pdf" }));
+    dt.items.add(new File([bytes], "client-contract.pdf", { type: "application/pdf" }));
+    dt.items.add(new File([bytes], "medical-records.pdf", { type: "application/pdf" }));
 
     var picker = document.getElementById("picker");
     picker.files = dt.files;
